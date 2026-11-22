@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum DeliveryType {
+  HOME
+  DESK
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id            String         @id @default(cuid())
+  name          String
+  slug          String         @unique
+  description   String         @db.Text
+  price         Int
+  discountPrice Int?
+  isActive      Boolean        @default(true)
+  isFeatured    Boolean        @default(false)
+  categoryId    String
+  category      Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images        ProductImage[]
+  variants      Variant[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([categoryId, isActive])
+  @@index([isFeatured, isActive])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String
+  position  Int     @default(0)
+
+  @@index([productId, position])
+}
+
+model Variant {
+  id        String      @id @default(cuid())
+  productId String
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String
+  color     String
+  stock     Int         @default(0)
+  isActive  Boolean     @default(true)
+  orderItems OrderItem[]
+
+  @@unique([productId, size, color])
+  @@index([productId, isActive])
+}
+
+model Wilaya {
+  id         String  @id @default(cuid())
+  code       String  @unique
+  nameAr     String
+  nameFr     String
+  homePrice  Int
+  deskPrice  Int
+  isActive   Boolean @default(true)
+  orders     Order[]
+}
+
+model Order {
+  id             String       @id @default(cuid())
+  orderNumber    String       @unique
+  status         OrderStatus  @default(PENDING)
+  customerName   String
+  phone          String
+  email          String?
+  address        String
+  customerNote   String?      @db.Text
+  internalNote   String?      @db.Text
+  wilayaCode     String
+  wilaya         Wilaya       @relation(fields: [wilayaCode], references: [code], onDelete: Restrict)
+  deliveryType   DeliveryType
+  subtotal       Int
+  shippingCost   Int
+  totalAmount    Int
+  stockDeducted  Boolean      @default(false)
+  items          OrderItem[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([status, createdAt])
+  @@index([phone])
+  @@index([customerName])
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId      String
+  variant        Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  productName    String
+  size           String
+  color          String
+  quantity       Int
+  unitPrice      Int
+  lineTotal      Int
+
+  @@index([variantId])
+}
